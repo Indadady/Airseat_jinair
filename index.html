@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>진에어 항공 좌석 요청서 자동화 폼 (Template & JSON 지원)</title>
+    
+    <!-- 카카오톡/페이스북 공유 썸네일 (Open Graph) -->
+    <meta property="og:title" content="진에어 항공 좌석 요청서 자동화 폼">
+    <meta property="og:description" content="진에어 학단 좌석 요청서를 웹에서 작성하고 템플릿/JSON 저장 기능으로 업무를 자동화하세요.">
+    <meta property="og:image" content="https://blogger.googleusercontent.com/img/a/AVvXsEhPxG_ONo2BdFAGDNnn-pHIGJTrAq374YbqgwTTlyIZTP22kOWTDD_AyjKDNFPhsHg5t1Iq6zV0dL_NZIj4o97Kd0eWJYCv-NHhtIqme-Mp3htGhAdkqVv5NRU3Jc9TbdbvvVKrPslObA1oNABpgl12QtGwirC2QM5lcPCVoWm8pIbeKuZBbeDHAvpbKEQ">
+    
+    <!-- GA4 (투어메이커 공식) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JLH9GD9SVR"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-JLH9GD9SVR');
+    </script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (브라우저에서 JSX 변환) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        @font-face {
+            font-family: 'Malgun Gothic';
+            src: local('Malgun Gothic');
+        }
+
+        @media print {
+            body { background-color: white !important; margin: 0; padding: 0; }
+            @page { size: A4 portrait; margin: 12mm; }
+            .page-break { page-break-before: always; }
+            
+            /* 프린트 시 배경색 음영 유지 */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* 인쇄 시 입력창 투명화 및 테두리 제거 */
+            .print-input-table { background: transparent !important; border: none !important; color: black !important; }
+            .print-input-table::placeholder { color: transparent !important; }
+            .print-input-line { background: transparent !important; border-bottom: 1px solid transparent !important; color: black !important; }
+            .print-input-line::placeholder { color: transparent !important; }
+            
+            /* 버튼 등 UI 숨기기 */
+            .no-print { display: none !important; }
+        }
+
+        /* 공통 스타일 */
+        body { font-family: 'Malgun Gothic', 'Dotum', 'Apple SD Gothic Neo', sans-serif; letter-spacing: -0.04em; }
+
+        /* 입력창 디자인 */
+        .print-input-table {
+            width: 100%; height: 100%; min-height: 28px;
+            background-color: #f8fafc; border: 1px solid transparent;
+            padding: 4px; font-family: inherit; font-size: 13.5px;
+            text-align: center; transition: all 0.2s;
+        }
+        .print-input-table:focus { background-color: #fff !important; border-color: #221F5F !important; outline: none; }
+        
+        .print-input-line {
+            background-color: #f0f4f8; border-bottom: 1px solid #000;
+            padding: 0 6px; font-family: inherit; font-size: inherit; transition: 0.2s;
+        }
+        .print-input-line:focus { background-color: #fff; border-bottom: 2px solid #221F5F; outline: none; }
+
+        /* 공문서 표 스타일 */
+        .doc-table { width: 100%; border-collapse: collapse; border-top: 2px solid #000; border-bottom: 2px solid #000; }
+        .doc-table th, .doc-table td { border: 1px solid #000; padding: 8px 4px; font-size: 14px; color: #000; height: 36px; vertical-align: middle; }
+        .doc-table th { font-weight: bold; text-align: center; background-color: #f2f2f2; }
+        
+        .box-border-strong { border: 2px solid #000; padding: 15px; }
+        .text-red-strong { color: #dc2626; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-900 pb-24 print:bg-white print:pb-0">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useRef } = React;
+
+        // --- 아이콘 컴포넌트 ---
+        const IconPrinter = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>;
+        const IconSave = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>;
+        const IconFolder = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>;
+        const IconZap = () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>;
+
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('school');
+            const fileInputRef = useRef(null);
+
+            const handlePrint = () => window.print();
+
+            // 1. JSON 파일로 내 기기에 저장
+            const exportToJson = () => {
+                const inputs = document.querySelectorAll('input');
+                const data = {};
+                inputs.forEach(input => {
+                    if (input.name) data[input.name] = input.value;
+                });
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `JinAir_Form_${activeTab}_${new Date().toISOString().slice(0,10)}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+            };
+
+            // 2. JSON 파일 불러오기
+            const importFromJson = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        applyData(data);
+                    } catch (err) {
+                        alert("파일을 읽는 중 오류가 발생했습니다. 올바른 JSON 파일인지 확인해주세요.");
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = ''; 
+            };
+
+            // 3. 고정 템플릿 로드 (제주 2박 3일 샘플)
+            const loadJejuTemplate = () => {
+                const sampleData = {
+                    s_route: "김포 - 제주",
+                    s_y: "2026", s_m: "04", s_d: "15",
+                    s_night: "2", s_day: "3",
+                    s_dep1: "김포(GMP)", s_arr1: "제주(CJU)", s_date1: "05/10", s_flt1: "LJ301", s_seat1: "120석",
+                    s_dep2: "제주(CJU)", s_arr2: "김포(GMP)", s_date2: "05/12", s_flt2: "LJ310", s_seat2: "120석",
+                    s_school: "투어메이커 고등학교", s_teacher: "안디 선생님", s_address: "강원도 태백시 인서로 100",
+                    s_tel: "033-123-4567", s_hp: "010-9999-8888", s_fax: "033-123-4568",
+                    s_agency: "투어메이커",
+                    s_sign_name: "인서다인성빈",
+                    s_agree_school: "투어메이커 고등학교",
+                    s_bottom_name: "인서다인성빈"
+                };
+                setActiveTab('school');
+                setTimeout(() => applyData(sampleData), 100);
+            };
+
+            const applyData = (data) => {
+                const inputs = document.querySelectorAll('input');
+                inputs.forEach(input => {
+                    if (input.name && data[input.name] !== undefined) {
+                        input.value = data[input.name];
+                    }
+                });
+            };
+
+            return (
+                <div>
+                    {/* 상단 컨트롤 바 (인쇄 시 숨김) */}
+                    <nav className="no-print bg-[#221F5F] text-white shadow-lg sticky top-0 z-50">
+                        <div className="max-w-[1100px] mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-4">
+                            <div className="flex items-center space-x-3">
+                                <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgHfgIX70O5k6Anuo0UgALIdaG9jSga9auHu3uyz0uEirylGPAJnjN_qQbvEGMUvPqUQf_g9FMNUHRxlDcUBf4vZ3Mpy4TnA9WxbmzWYK11gt2zuy_Irl4wctNFjcjLyPo0GPXV792o_J7L9guRMuDfeC1gy7USwywjYbECZgzcsHybuGRRAXAnO1eNmP8/s320/logo.png" alt="Tourmaker" className="h-6 brightness-0 invert" />
+                                <span className="font-bold tracking-tight">진에어 업무 자동화 시스템</span>
+                            </div>
+                            
+                            <div className="flex flex-wrap items-center gap-2">
+                                <button onClick={loadJejuTemplate} className="flex items-center space-x-1 bg-amber-500 hover:bg-amber-600 px-3 py-1.5 rounded text-sm font-bold transition-all">
+                                    <IconZap /> <span>제주 2박3일 템플릿</span>
+                                </button>
+                                <button onClick={exportToJson} className="flex items-center space-x-1 bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 rounded text-sm font-bold transition-all">
+                                    <IconSave /> <span>내 기기 저장(JSON)</span>
+                                </button>
+                                <button onClick={() => fileInputRef.current.click()} className="flex items-center space-x-1 bg-slate-600 hover:bg-slate-700 px-3 py-1.5 rounded text-sm font-bold transition-all">
+                                    <IconFolder /> <span>불러오기</span>
+                                </button>
+                                <input type="file" ref={fileInputRef} onChange={importFromJson} accept=".json" className="hidden" />
+                                <div className="w-px h-6 bg-white/20 mx-1"></div>
+                                <button onClick={handlePrint} className="flex items-center space-x-1 bg-white text-[#221F5F] px-4 py-1.5 rounded text-sm font-black shadow-md transition-all active:scale-95">
+                                    <IconPrinter /> <span>PDF 저장 / 인쇄</span>
+                                </button>
+                            </div>
+                        </div>
+                    </nav>
+
+                    {/* 탭 전환 (인쇄 시 숨김) */}
+                    <div className="no-print max-w-[850px] mx-auto mt-8 flex px-4">
+                        <button onClick={() => setActiveTab('school')} className={`flex-1 py-3 font-bold rounded-t-xl transition-all border-b-4 ${activeTab === 'school' ? 'bg-white text-[#221F5F] border-[#221F5F] shadow-sm' : 'bg-slate-200 text-slate-500 border-transparent hover:bg-slate-300'}`}>학교용 (수학여행)</button>
+                        <button onClick={() => setActiveTab('agency')} className={`flex-1 py-3 font-bold rounded-t-xl transition-all border-b-4 ${activeTab === 'agency' ? 'bg-white text-[#221F5F] border-[#221F5F] shadow-sm' : 'bg-slate-200 text-slate-500 border-transparent hover:bg-slate-300'}`}>대리점용 (여행사)</button>
+                    </div>
+
+                    {/* 메인 폼 */}
+                    <main className="max-w-[850px] mx-auto bg-white shadow-2xl print:shadow-none mb-10 overflow-hidden print:m-0">
+                        <div className="p-[50px] md:p-[70px] print:p-0">
+                            {activeTab === 'school' ? <SchoolForm /> : <AgencyForm />}
+                        </div>
+                    </main>
+
+                    {/* 푸터 */}
+                    <footer className="no-print max-w-[850px] mx-auto py-8 text-center border-t border-slate-200">
+                        <p className="text-[13px] text-slate-500">
+                            [System Powered by TOURMAKER] 본 스마트 가이드북은 투어메이커의 기획과 
+                            <a href="https://tourmaker.kr" target="_blank" className="font-bold text-blue-500 mx-1">투어메이커</a>의 트래블 테크 기술 제휴로 제작되었습니다.
+                        </p>
+                    </footer>
+                </div>
+            );
+        };
+
+        const JinAirHeader = () => (
+            <div className="mb-10 pb-4 border-b-2 border-black flex justify-center">
+                <img src="https://blogger.googleusercontent.com/img/a/AVvXsEida-rIZa-IdJHiWbOYJBuSlrPIjAyxGpahaxUdf8swIII6NFUBQUXLI3KWOTRY7nV7o8IkI7j9XiSgMuN3Bxld30poFhANxP5WD4mEl4656Ag61xVf98p25ieR_5DBsvL_uDp804KnDKs7xqpapjIfi1AuvMV9aJVw9QqWsNeQMhWAZuUex5zJ3R2VxsU=w640-h128" alt="JinAir Letterhead" className="w-full max-w-[700px] h-auto object-contain" />
+            </div>
+        );
+
+        const SchoolForm = () => (
+            <div className="text-black leading-tight">
+                <JinAirHeader />
+                
+                <div className="relative flex flex-col items-center mb-12">
+                    <span className="absolute left-0 top-0 font-bold text-[15px]">㈜진에어 귀중</span>
+                    <div className="mt-8 flex items-center text-[26px] font-black tracking-tight">
+                        <span>(</span>
+                        <input type="text" name="s_route" className="print-input-line w-[120px] text-center text-xl font-bold mx-1" placeholder="노선입력" />
+                        <span>)항공 좌석 요청서</span>
+                    </div>
+                    <div className="absolute right-0 bottom-[-25px] flex items-center font-bold text-[15px]">
+                        <input type="text" name="s_y" className="print-input-line w-14 text-center" placeholder="2026" />년
+                        <input type="text" name="s_m" className="print-input-line w-10 text-center mx-1" placeholder="04" />월
+                        <input type="text" name="s_d" className="print-input-line w-10 text-center mx-1" placeholder="15" />일
+                    </div>
+                </div>
+
+                <p className="font-bold text-[15.5px] mb-4">본교 수학(졸업) 여행에 참석하는 학생에 대한 항공좌석 지원을 아래와 같이 요청합니다.</p>
+
+                {/* 일정 표 (비율 대폭 조정) */}
+                <table className="doc-table mb-10">
+                    <tbody>
+                        <tr>
+                            <th className="w-[18%]">일정</th>
+                            <th className="w-[16.4%]">출발</th>
+                            <th className="w-[16.4%]">도착</th>
+                            <th className="w-[16.4%]">일자</th>
+                            <th className="w-[16.4%]">요청 스케줄</th>
+                            <th className="w-[16.4%]">요청 좌석수</th>
+                        </tr>
+                        <tr>
+                            <td rowSpan="2" className="bg-[#f2f2f2] text-center font-bold">
+                                <div className="flex flex-col items-center justify-center py-2 space-y-1">
+                                    <span className="text-[14px]">전체일정</span>
+                                    <span className="whitespace-nowrap text-[13px] font-normal">
+                                        (<input type="text" name="s_night" className="print-input-table w-7 border-b border-slate-400 !bg-transparent font-bold" placeholder="2" />박 
+                                        <input type="text" name="s_day" className="print-input-table w-7 border-b border-slate-400 !bg-transparent font-bold" placeholder="3" />일)
+                                    </span>
+                                </div>
+                            </td>
+                            <td><input type="text" name="s_dep1" className="print-input-table" placeholder="예: GMP" /></td>
+                            <td><input type="text" name="s_arr1" className="print-input-table" placeholder="예: CJU" /></td>
+                            <td><input type="text" name="s_date1" className="print-input-table" placeholder="MM/DD" /></td>
+                            <td><input type="text" name="s_flt1" className="print-input-table" placeholder="예: LJ301" /></td>
+                            <td><input type="text" name="s_seat1" className="print-input-table" placeholder="00석" /></td>
+                        </tr>
+                        <tr>
+                            <td><input type="text" name="s_dep2" className="print-input-table" placeholder="예: CJU" /></td>
+                            <td><input type="text" name="s_arr2" className="print-input-table" placeholder="예: GMP" /></td>
+                            <td><input type="text" name="s_date2" className="print-input-table" placeholder="MM/DD" /></td>
+                            <td><input type="text" name="s_flt2" className="print-input-table" placeholder="예: LJ302" /></td>
+                            <td><input type="text" name="s_seat2" className="print-input-table" placeholder="00석" /></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                {/* 학교 기입 정보 */}
+                <table className="doc-table mb-10">
+                    <tbody>
+                        <tr>
+                            <th rowSpan="6" className="w-[15%]">학교 측<br/>기입 항목</th>
+                            <th className="w-[18%]">학교명</th>
+                            <td colSpan="2"><input type="text" name="s_school" className="print-input-table font-bold text-left px-3" placeholder="학교명을 입력하세요" /></td>
+                        </tr>
+                        <tr>
+                            <th>담당 교사</th>
+                            <td colSpan="2"><input type="text" name="s_teacher" className="print-input-table font-bold text-left px-3" placeholder="성함을 입력하세요" /></td>
+                        </tr>
+                        <tr>
+                            <th>주소</th>
+                            <td colSpan="2"><input type="text" name="s_address" className="print-input-table text-left px-3" placeholder="학교 주소를 입력하세요" /></td>
+                        </tr>
+                        <tr>
+                            <th rowSpan="3" className="w-[18%]">연락처</th>
+                            <th className="w-[15%]">내선번호</th>
+                            <td><input type="text" name="s_tel" className="print-input-table" placeholder="02-123-4567" /></td>
+                        </tr>
+                        <tr>
+                            <th>H/P</th>
+                            <td><input type="text" name="s_hp" className="print-input-table" placeholder="010-0000-0000" /></td>
+                        </tr>
+                        <tr>
+                            <th>FAX</th>
+                            <td><input type="text" name="s_fax" className="print-input-table" placeholder="02-123-4568" /></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <table className="doc-table mb-12">
+                    <tbody>
+                        <tr>
+                            <th className="w-[33%]">예약요청 여행사</th>
+                            <td><input type="text" name="s_agency" className="print-input-table font-black text-left px-4" defaultValue="투어메이커" /></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div className="text-[14px] font-bold space-y-2 mb-20 leading-relaxed">
+                    <p>※ 예약 요청 여행사가 유찰 시, 항공 좌석은 최종 낙찰된 여행사에게 양도 됩니다.</p>
+                    <p>※ 본 항공 좌석 요청과 관련한 확인/협조 요청 사항은 뒷장에 첨부된 파일을 참고하여 주시기 바랍니다.</p>
+                </div>
+
+                <div className="flex justify-end items-center text-[18px] font-black px-4 mb-4">
+                    <span className="mr-8">학 교 장</span>
+                    <input type="text" name="s_sign_name" className="print-input-line w-32 text-center" placeholder="대표자명" />
+                    <span className="ml-2 font-bold">(인)</span>
+                </div>
+
+                {/* 2페이지 (규정 및 박스) */}
+                <div className="page-break my-16 border-t border-dashed border-slate-300 print:border-none"></div>
+                <JinAirHeader />
+                <h3 className="text-[16px] font-black mb-4 tracking-tight">* 항공좌석지원 요청과 관련된 확인 사항 및 공항업무 협조요청사항</h3>
+                
+                <div className="text-[14px] leading-relaxed text-black font-medium text-justify mb-6">
+                    <p className="mb-4">교육부에서 발표한 '안전하고 교육적인 수학여행 시행방안(14.06.30 부)'과 관련하여<br/>수학(졸업)여행 항공좌석지원 요청 전 아래와 같은 사항들을 확인 후, 송부 바랍니다.</p>
+                    
+                    {/* 요청하신 굵은 실선 네모박스 구역 */}
+                    <div className="box-border-strong space-y-6">
+                        <div>
+                            <h4 className="font-black text-[15px] mb-1">1) 스케줄 관련</h4>
+                            <p className="pl-2">• 항공 스케줄은 정부 인허가 조건이며, 지원된 좌석은 동/하계 스케줄 조정에 따라 변경 가능성이 있습니다.</p>
+                        </div>
+
+                        <div>
+                            <h4 className="font-black text-[15px] mb-1">2) 입찰 관련</h4>
+                            <ul className="list-disc pl-7 space-y-1">
+                                <li>학단 출발 50일 이전 입찰 완료합니다. (단, 기간이내 시, 항공사와 협의 필요.)</li>
+                                <li className="text-red-strong">입찰 공고 시, 진에어 이용조건이 표기되어야 하며, 미표기 시, 통보없이 좌석은 회수될 수 있습니다.</li>
+                                <li className="text-red-strong">낙찰 이전 임의로 발권된 항공권은 진에어 취소위약금 규정에 따라 발권 업체 부담이며, 해당 좌석은 항공사로 귀속됩니다.</li>
+                                <li>최초 "수학(졸업) 여행 항공 좌석 요청서"를 발행한 대행 여행사가 유찰 시, 최종 낙찰 받은 대행 여행사에게 낙찰을 입증할 수 있는 "낙찰 확인서"를 작성하여 송부 바랍니다.</li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h4 className="font-black text-[15px] mb-1">3) Penalty 관련</h4>
+                            <div className="pl-2 space-y-3">
+                                <p><strong>Penalty 부과 대상 :</strong> 1. 확정석의 85% 미만 탑승 시 (확정석 : 출발일 기준 45일 이전 보유 좌석)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. 좌석요청서 제출 후, 타항공사로 중복 예약 및 타항공사 탑승 시 Penalty 부과</p>
+                                <p><strong>Penalty 부과 금액 :</strong> 미사용 좌석당 판매가의 50% (유류세/공항세 제외 금액)</p>
+                                <p><strong>Penalty 부과 면제 기준 :</strong> 천재지변, 불가항력, 전염병 등 정부기관 공문 접수 시에 한함</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 className="font-black text-[15px] mb-1">4) 공항업무 협조요청사항</h4>
+                            <ul className="list-disc pl-7 space-y-0.5">
+                                <li>공항내 집결장소 동일지역 내 운영 / 1인 1캐리어 소지 원칙</li>
+                                <li>반별 집결/이동 및 공항직원 협조요청에 대한 적극적 업무협조</li>
+                                <li>공항 및 기내에서 타승객에게 불편초래 절대 금지</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <p className="mt-6 font-bold text-[14px]">※ 기타 문의사항 : [국내 전노선] 안민 대리 02) 3660-5802 / [경남노선] 김세혁 대리 02) 3660-5820</p>
+                </div>
+
+                <div className="mt-12 text-center text-[16px] font-black flex items-center justify-center">
+                    상기 사항에 모두 동의 및 숙지 하였으며, (
+                    <input type="text" name="s_agree_school" className="print-input-line w-48 text-center font-black mx-1" placeholder="학교명" />
+                    ) 항공 좌석 지원을 요청합니다.
+                </div>
+                
+                <div className="flex justify-end items-center mt-12 text-[18px] font-black px-4">
+                    <span className="mr-8">학 교 장</span>
+                    <input type="text" name="s_bottom_name" className="print-input-line w-32 text-center" />
+                    <span className="ml-2 font-bold">(인)</span>
+                </div>
+            </div>
+        );
+
+        const AgencyForm = () => (
+            <div className="text-black leading-tight">
+                <JinAirHeader />
+                <div className="text-center mt-10 mb-14">
+                    <div className="flex items-center justify-center text-[26px] font-black">
+                        <span>(</span>
+                        <input type="text" name="a_route" className="print-input-line w-[120px] text-center text-xl font-bold mx-2" placeholder="노선입력" />
+                        <span>)항공 좌석 요청서 - 대리점용</span>
+                    </div>
+                </div>
+
+                <div className="mb-12 text-[15px] leading-relaxed font-bold">
+                    <p className="mb-2 flex items-end">
+                        <input type="text" name="a_agency_top" className="print-input-line w-48 text-center" placeholder="대리점명" />
+                        <span>는 주진에어에게 다음과 같이 학단좌석을 지원요청하며, 지원된 학단좌석에</span>
+                    </p>
+                    <p className="mb-2">대한 실제 탑승결과가 아래의 Penalty 부과기준에 부합될 경우, 그 금액에 대하여 주진에어는</p>
+                    <p className="flex items-end">
+                        <input type="text" name="a_agency_mid" className="print-input-line w-48 text-center" placeholder="대리점명" />
+                        <span>에 Penalty를 부과한다.</span>
+                    </p>
+                </div>
+
+                <h3 className="font-black text-[16px] mb-3">1. 요청 내역</h3>
+                <table className="doc-table mb-12">
+                    <tbody>
+                        <tr>
+                            <th className="w-[18%]">대리점명</th>
+                            <td className="w-[32%]"><input type="text" name="a_agency_name" className="print-input-table font-bold" /></td>
+                            <th className="w-[18%]">대리점 전화번호</th>
+                            <td className="w-[32%]"><input type="text" name="a_tel" className="print-input-table" placeholder="02-000-0000" /></td>
+                        </tr>
+                        <tr>
+                            <th>학교명</th>
+                            <td><input type="text" name="a_school" className="print-input-table font-bold" /></td>
+                            <th>총 요청 좌석</th>
+                            <td><input type="text" name="a_seats" className="print-input-table" placeholder="00석" /></td>
+                        </tr>
+                        <tr>
+                            <th>일정</th>
+                            <td><input type="text" name="a_schedule" className="print-input-table" placeholder="0박 0일" /></td>
+                            <th>출발/도착지</th>
+                            <td><input type="text" name="a_route_detail" className="print-input-table" placeholder="예: 김포/제주" /></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 className="font-black text-[16px] mb-3">2. Penalty 부과 기준</h3>
+                <div className="text-[14px] leading-relaxed font-medium mb-12 border border-slate-300 p-6">
+                    <div className="text-center font-black mb-4 tracking-widest">◇ 다 음 ◇</div>
+                    <div className="space-y-4">
+                        <p><strong>가. Penalty 부과 대상 :</strong> 1. 확정석의 85% 미만 탑승 시 (D-45 이후 Holding 좌석 기준)<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2. 행사 취소가 아닌 OAL(타사)로 탑승하는 경우</p>
+                        <p><strong>나. Penalty 부과 금액 :</strong> 미사용 좌석당 판매가의 50% (유류세/공항세 제외)</p>
+                        <p><strong>다. Penalty 부과 면제 기준 :</strong> D-45 이전 반납, 항공사 사정으로 인한 결항, 천재지변 등</p>
+                    </div>
+                </div>
+
+                <h3 className="font-black text-[16px] mb-3">3. 기타 조건</h3>
+                <p className="text-[14px] pl-2 mb-10 leading-relaxed">
+                    가. Name Change 등의 변경 사항은 (주)진에어 예약 규정 준수<br/>
+                    나. 기타 변경 사항 발생 시, 당사자간 합의 후 Penalty 부과 기준 조정
+                </p>
+
+                <div className="text-center font-black text-[17px] mb-14">
+                    수학(졸업)여행에 참석하는 학생에 대한 항공좌석 지원을 위와 같이 요청합니다.
+                </div>
+
+                <div className="flex justify-end items-center text-[18px] font-black px-6">
+                    <span className="mr-8">여 행 사 대 표</span>
+                    <input type="text" name="a_ceo_name" className="print-input-line w-40 text-center" placeholder="대표자명" />
+                    <span className="ml-2 font-bold">(직인)</span>
+                </div>
+            </div>
+        );
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
